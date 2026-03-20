@@ -1,0 +1,231 @@
+---
+title: "Proyecto Final Econometría" 
+author: "Ariadna Alonso"
+date: "Mar 19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+
+```{r}
+#Cargar Librerias
+
+library(quantmod)
+library(PerformanceAnalytics)
+library(ggplot2)
+library(dplyr)
+library(ggcorrplot)
+```
+
+```{r}
+#Descargar datos con getSymbols
+
+#Tickers
+tickers <- c("HAL","XOM","COP","VLO","GOOGL","TSLA","BP","CVX","MSFT","AMZN")
+
+# Rango de fechas
+from_date <- "2023-01-01"
+to_date   <- "2026-03-15"
+
+# Descargar datos
+getSymbols(tickers,
+           src  = "yahoo",
+           from = from_date,
+           to   = to_date)
+```
+
+```{r}
+#Construcción de precios ajustados y rendimientos
+
+# Precios ajustados
+prices <- merge(Ad(HAL), Ad(XOM), Ad(COP), Ad(VLO), Ad(GOOGL), Ad(TSLA), Ad(BP), Ad(CVX), Ad(MSFT),Ad(AMZN))
+
+colnames(prices) <- c("HAL", "XOM", "COP", "VLO", "GOOGL", "TSLA", "BP", "CVX", "MSFT","AMZN")
+
+# Eliminar NA
+prices <- na.omit(prices)
+
+# Rendimientos logarítmicos
+returns <- na.omit(Return.calculate(prices, method = "log"))
+#head(returns)
+```
+
+```{r}
+#=============================================
+#Etapa 4 - Obtención y transformacion de datos
+#=============================================
+
+# --- Matriz de correlación
+corr_mat <- cor(returns)
+
+# Ver tabla (opcional)
+round(corr_mat, 3)
+
+# Heatmap de correlación
+ggcorrplot(
+  corr_mat,
+  type = "lower",
+  lab = TRUE,
+  lab_size = 2.4,
+  title = "Mapa de calor: correlación de rendimientos logarítmicos",
+  ggtheme = ggplot2::theme_minimal()
+)
+
+```
+
+
+```{r}
+
+#===============================
+#Etapa 5 -  Modelo estimado
+#===============================
+
+#XOMt=β0+β1HALt+β2COPt+β3VLOt+β4GOOGLt+β5TSLAt+β6BPt+β7CVXt+β8MSFTt+β9AMZNt+ut
+
+# Convertir rendimientos a data.frame (NECESARIO para lm)
+df_returns <- as.data.frame(returns)
+
+# Verificar
+#head(df_returns)
+#str(df_returns)
+
+# Modelo de regresión lineal múltiple
+modelo_XOM <- lm( XOM ~ HAL + COP + VLO + GOOGL + TSLA + BP + CVX + MSFT + AMZN, data = df_returns)
+
+#summary(modelo_XOM)
+#Estádisticos del data frame
+summary(df_returns)
+ table.Stats(returns)
+```
+
+
+```{r}
+#Incluir Series de Tiempo
+
+
+library(PerformanceAnalytics)
+# OJO: pasar una sola columna (XOM) y forzar plot.engine
+chart.TimeSeries(returns[,"XOM"],
+                 main = "Rendimientos logarítmicos diarios de XOM",
+                 ylab = "Rendimiento",
+                 plot.engine = "default")
+
+```
+```{r}
+#Estacionalidad x semana (Series de Tiempo)
+
+
+df_returns$date <- index(returns)
+df_returns$weekday <- weekdays(df_returns$date)
+
+aggregate(XOM ~ weekday, data = df_returns, mean)
+
+```
+
+```{r}
+#Estacionalidad Mensual (Series de Tiempo)
+
+df_returns$month <- format(df_returns$date, "%m")
+aggregate(XOM ~ month, data = df_returns, mean)
+
+#Grafico
+
+boxplot(XOM ~ month,
+        data = df_returns,
+        main = "Rendimientos de XOM por mes",
+        ylab = "Rendimiento",
+        las = 2)
+
+
+```
+
+```{r}
+#Revisar Estadísticos
+#class(modelo_XOM)
+#summary(modelo_XOM)$coefficients
+
+#library(knitr)
+#kable(summary(modelo_XOM)$coefficients, digits = 4)
+
+summary(modelo_XOM)
+
+```
+```{r}
+# =========================
+# ETAPA 6 – Diagnóstico
+# =========================
+
+library(lmtest)
+library(car)
+
+# 1. Autocorrelación
+dwtest(modelo_XOM)
+
+# 2. Heterocedasticidad
+bptest(modelo_XOM)
+
+# 3. Multicolinealidad
+vif(modelo_XOM)
+```
+
+
+```{r}
+# =========================
+# ETAPA 7 – Pronostico
+# =========================
+#Obtener valores ajustados (in-sample forecast)
+
+# Valores ajustados del modelo
+fitted_XOM <- fitted(modelo_XOM)
+
+# Comparar con valores reales
+head(cbind(
+  XOM_real = df_returns$XOM,
+  XOM_ajustado = fitted_XOM
+))
+
+```
+```{r}
+#Visualizacion
+
+plot(df_returns$XOM, type = "l", col = "black",
+     main = "XOM real vs XOM ajustado",
+     ylab = "Rendimiento", xlab = "Tiempo")
+
+lines(fitted_XOM, col = "blue", lwd = 2)
+
+legend("topright",
+       legend = c("XOM real", "XOM ajustado"),
+       col = c("black", "blue"),
+       lty = 1)
+
+```
+
+```{r}
+# =========================
+#Etapa 8 GARCH - Puntos extra
+# =========================
+# install.packages("rugarch")
+library(rugarch)
+
+
+# Especificación GARCH(1,1)
+spec_garch <- ugarchspec(
+  variance.model = list(model = "sGARCH", garchOrder = c(1,1)),
+  mean.model     = list(armaOrder = c(0,0), include.mean = TRUE),
+  distribution.model = "norm"
+)
+garch_XOM <- ugarchfit(
+  spec = spec_garch,
+  data = df_returns$XOM)
+
+show(garch_XOM)  
+
+```
+
+
+
+
