@@ -1,0 +1,2 @@
+# ECONOMETRIA-FINANCIERA-GPO-40-ENE-MAR-26
+Trabajo final de Econometría - A00764224
