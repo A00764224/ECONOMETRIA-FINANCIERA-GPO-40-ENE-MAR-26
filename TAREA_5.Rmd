@@ -1,0 +1,724 @@
+---
+title: "TAREA_5"
+output: html_document
+---
+
+**Entrega de Tarea 5 - Refinitiv** <br>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r cars}
+#summary(cars)
+```
+
+
+
+```{r}
+library(quantmod)
+library(PerformanceAnalytics) 
+```
+
+<h2>MODELO 1 / MODELO 2 / MODELO 3  -  DATOS DE REFINITIV (EL MISMO MODELO CON GETSYMBOLS SE ENTREGÓ EN LA TAREA CLASE_5) </h2>
+
+<p>
+En esta segunda parte de la tarea se replica el modelo de regresión utilizando datosde frecuencia de 30 minutos, obtenidos a partir de archivos de Excel descargados desde Refinitiv, manteniendo el mismo conjunto de acciones analizado previamente (tarea 5_1).
+</p>
+
+<p>
+Modelo 1 - HAL se utiliza ahora como variable dependiente, mientras que el resto de las acciones se consideran variables independientes.</p>
+<p>
+Modelo 2 - XOM se utiliza ahora como variable dependiente, mientras que el resto de las acciones se consideran variables independientes.</p>
+
+<p>
+Modelo 3 - GOOGL se utiliza ahora como variable dependiente, mientras que el resto de las acciones de tecnología se consideran variables independientes.</p>
+
+```{r}
+
+library(dplyr)
+library(lubridate)
+```
+
+```{r}
+
+library(dplyr)
+library(lubridate)
+library(purrr)
+library(car)        # <--- ESTA
+library(lmtest)     # para bptest y bgtest
+library(sandwich)   # para errores robustos
+library(readxl)
+VLO_30M <- read_excel("VLO_30M.xlsx")
+XOM_30M <- read_excel("XOM_30M.xlsx")
+HAL_30M <- read_excel("HAL_30M.xlsx")
+TSLA_30M <- read_excel("TSLA_30M.xlsx")
+GOOGL_30M <- read_excel("GOOGL_30M.xlsx")
+CVX_30M <- read_excel("CVX_30M.xlsx")
+COP_30M <- read_excel("COP_30M.xlsx")
+AGQ_30M <- read_excel("AGQ_30M.xlsx")
+
+#Para el modelo 3 traemos un nuevo set de tickers con freciencia de 30min
+
+GOOGL_30MT <- read_excel("GOOGL_30MT.xlsx")
+MSFT_30MT <- read_excel("MSFT_30MT.xlsx")
+AAPL_30MT <- read_excel("AAPL_30MT.xlsx")
+NVDA_30MT <- read_excel("NVDA_30MT.xlsx")
+META_30MT <- read_excel("META_30MT.xlsx")
+AMZN_30MT <- read_excel("AMZN_30MT.xlsx")
+```
+
+
+```{r}
+#head(VLO_30M)
+
+VLO_30M_clean <- VLO_30M %>%
+  mutate(
+    timestamp = lubridate::with_tz(`Exchange Time`, "UTC")
+  ) %>%
+  select(timestamp, VLO_Close = Close)
+
+#head(VLO_30M_clean)
+
+```
+
+
+```{r}
+#head(XOM_30M)
+
+XOM_30M_clean <- XOM_30M %>%
+  mutate(
+    timestamp = lubridate::with_tz(`Exchange Time`, "UTC")
+  ) %>%
+  select(timestamp, XOM_Close = Close)
+
+#head(XOM_30M_clean)
+
+```
+
+
+```{r}
+#head(TSLA_30M)
+
+TSLA_30M_clean <- TSLA_30M %>%
+  mutate(
+    timestamp = lubridate::with_tz(`Exchange Time`, "UTC")
+  ) %>%
+  select(timestamp, TSLA_Close = Close)
+
+#head(TSLA_30M_clean)
+
+```
+
+```{r}
+#head(HAL_30M)
+
+HAL_30M_clean <- HAL_30M %>%
+  mutate(
+    timestamp = lubridate::with_tz(`Exchange Time`, "UTC")
+  ) %>%
+  select(timestamp, HAL_Close = Close)
+
+#head(HAL_30M_clean)
+```
+
+
+```{r}
+GOOGL_30M_clean <- GOOGL_30M %>%
+  mutate(
+    timestamp = lubridate::with_tz(`Exchange Time`, "UTC")
+  ) %>%
+  select(timestamp, GOOGL_Close = Close)
+```
+
+```{r}
+#head(CVX_30M)
+
+CVX_30M_clean <- CVX_30M %>%
+  mutate(
+    timestamp = lubridate::with_tz(`Exchange Time`, "UTC")
+  ) %>%
+  select(timestamp, CVX_Close = Close)
+
+#head(CVX_30M_clean)
+```
+
+```{r}
+#head(COP_30M)
+
+COP_30M_clean <- COP_30M %>%
+  mutate(
+    timestamp = lubridate::with_tz(`Exchange Time`, "UTC")
+  ) %>%
+  select(timestamp, COP_Close = Close)
+
+#head(COP_30M_clean)
+```
+
+```{r}
+#head(AGQ_30M)
+
+AGQ_30M_clean <- AGQ_30M %>%
+  mutate(
+    timestamp = lubridate::with_tz(`Exchange Time`, "UTC")
+  ) %>%
+  select(timestamp, AGQ_Close = Close)
+
+#head(TSLA_30M_clean)
+```
+
+```{r}
+#head(GOOGL_30MT)
+
+GOOGL_30MT_clean <- GOOGL_30MT %>%
+  mutate(
+    timestamp = lubridate::with_tz(`Exchange Time`, "UTC")
+  ) %>%
+  select(timestamp, GOOGLT_Close = Close)
+
+#head(GOOGL_30MT_clean)
+```
+
+```{r}
+#head(MSFT_30MT)
+
+MSFT_30MT_clean <- MSFT_30MT %>%
+  mutate(
+    timestamp = lubridate::with_tz(`Exchange Time`, "UTC")
+  ) %>%
+  select(timestamp, MSFTT_Close = Close)
+
+#head(MSFT_30MT_clean)
+```
+
+```{r}
+#head(AAPL_30MT)
+
+AAPL_30MT_clean <- AAPL_30MT %>%
+  mutate(
+    timestamp = lubridate::with_tz(`Exchange Time`, "UTC")
+  ) %>%
+  select(timestamp, AAPLT_Close = Close)
+
+#head(AAPL_30MT_clean)
+```
+
+```{r}
+#head(NVDA_30MT)
+
+NVDA_30MT_clean <- NVDA_30MT %>%
+  mutate(
+    timestamp = lubridate::with_tz(`Exchange Time`, "UTC")
+  ) %>%
+  select(timestamp, NVDAT_Close = Close)
+
+#head(NVDA_30MT_clean)
+```
+
+```{r}
+#head(META_30MT)
+
+META_30MT_clean <- META_30MT %>%
+  mutate(
+    timestamp = lubridate::with_tz(`Exchange Time`, "UTC")
+  ) %>%
+  select(timestamp, METAT_Close = Close)
+
+#head(META_30MT_clean)
+```
+
+```{r}
+#head(AMZN_30MT)
+
+AMZN_30MT_clean <- AMZN_30MT %>%
+  mutate(
+    timestamp = lubridate::with_tz(`Exchange Time`, "UTC")
+  ) %>%
+  select(timestamp, AMZNT_Close = Close)
+
+#head(AMZN_30MT_clean)
+```
+
+
+#UNIR LAS 8 SERIES
+```{r}
+#MODELO 1 y 2
+library(purrr)
+
+all_data <- list(
+  XOM_30M_clean, HAL_30M_clean, GOOGL_30M_clean,
+  VLO_30M_clean, COP_30M_clean, CVX_30M_clean,
+  TSLA_30M_clean, AGQ_30M_clean
+) %>%
+  reduce(full_join, by = "timestamp") %>%
+  arrange(timestamp)
+
+#summary(all_data)
+```
+
+```{r}
+#MODELO 3
+library(purrr)
+
+all_dataT <- list(
+  GOOGL_30MT_clean, MSFT_30MT_clean, AAPL_30MT_clean,
+  NVDA_30MT_clean, META_30MT_clean, AMZN_30MT_clean) %>%
+  reduce(full_join, by = "timestamp") %>%
+  arrange(timestamp)
+
+#summary(all_dataT)
+```
+
+
+```{r}
+
+# Cálculo de rendimientos logarítmicos (Modelo 1 y 2)
+returns_30M <- all_data %>%
+  arrange(timestamp) %>%
+  mutate(across(ends_with("_Close"),
+                ~ log(.) - log(lag(.)),
+                .names = "{.col}_ret")) %>%
+  select(timestamp, ends_with("_ret"))
+
+
+# Cálculo de rendimientos logarítmicos (Modelo 3)
+returns_30MT <- all_dataT %>%
+  arrange(timestamp) %>%
+  mutate(across(ends_with("_Close"),
+                ~ log(.) - log(lag(.)),
+                .names = "{.col}_ret")) %>%
+  select(timestamp, ends_with("_ret"))
+
+```
+
+```{r}
+#DataSet final para el MODELO 1 
+modelo1_data <- returns_30M %>%
+  select(timestamp,
+         HAL = HAL_Close_ret,
+         XOM = XOM_Close_ret,
+         GOOGL = GOOGL_Close_ret,
+         VLO = VLO_Close_ret,
+         COP = COP_Close_ret,
+         CVX = CVX_Close_ret,
+         TSLA = TSLA_Close_ret,
+         AGQ = AGQ_Close_ret)
+
+
+#DataSet final para el MODELO 2 
+modelo2_data <- returns_30M %>%
+  select(timestamp,
+         HAL = HAL_Close_ret,
+         XOM = XOM_Close_ret,
+         GOOGL = GOOGL_Close_ret,
+         VLO = VLO_Close_ret,
+         COP = COP_Close_ret,
+         CVX = CVX_Close_ret,
+         TSLA = TSLA_Close_ret,
+         AGQ = AGQ_Close_ret)
+
+#DataSet final para el MODELO 3 
+modelo3_data <- returns_30MT %>%
+  select(timestamp,
+         GOOGLT = GOOGLT_Close_ret,
+         MSFTT = MSFTT_Close_ret,
+         AAPLT = AAPLT_Close_ret,
+         NVDAT = NVDAT_Close_ret,
+         METAT = METAT_Close_ret,
+         AMZNT = AMZNT_Close_ret)
+
+```
+
+
+```{r}
+#==========================
+# MATRIZ DE CORRELACIÓN primer set de acciones
+#==========================
+
+library(corrplot)
+
+# Eliminar timestamp para la prueba de correlación
+returns_mat <- modelo1_data %>%
+  select(-timestamp)
+
+# Correlación de Pearson
+cor_matrix <- cor(returns_mat, use = "complete.obs", method = "pearson")
+
+# Mostrar matriz numérica
+round(cor_matrix, 3)
+
+# Visualización tipo heatmap
+corrplot(
+  cor_matrix,
+  method = "color",
+  type = "upper",
+  tl.col = "black",
+  tl.srt = 45,
+  addCoef.col = "black",
+  number.cex = 0.7,
+  diag = FALSE
+)
+```
+
+```{r}
+#==========================
+# MATRIZ DE CORRELACIÓN segundo set de acciones
+#==========================
+
+library(corrplot)
+
+# Eliminar timestamp para la prueba de correlación
+returns_mat <- modelo2_data %>%
+  select(-timestamp)
+
+# Correlación de Pearson
+cor_matrix <- cor(returns_mat, use = "complete.obs", method = "pearson")
+
+# Mostrar matriz numérica
+round(cor_matrix, 3)
+
+# Visualización tipo heatmap
+corrplot(
+  cor_matrix,
+  method = "color",
+  type = "upper",
+  tl.col = "black",
+  tl.srt = 45,
+  addCoef.col = "black",
+  number.cex = 0.7,
+  diag = FALSE
+)
+```
+
+
+```{r}
+#=================================
+# MATRIZ DE CORRELACIÓN – MODELO 3
+#=================================
+
+returns_mat_T <- modelo3_data %>%
+  select(-timestamp)
+
+cor_matrix_T <- cor(returns_mat_T, use = "complete.obs", method = "pearson")
+
+round(cor_matrix_T, 3)
+
+corrplot(
+  cor_matrix_T,
+  method = "color",
+  type = "upper",
+  tl.col = "black",
+  tl.srt = 45,
+  addCoef.col = "black",
+  number.cex = 0.7,
+  diag = FALSE
+)
+```
+
+
+```{r}
+#Ajustar el modelo 1 con HAL como variable dependiente
+
+modelo1 <- lm(
+  HAL ~ XOM + GOOGL + VLO + COP + CVX + TSLA + AGQ,
+  data = modelo1_data
+)
+
+summary(modelo1)
+
+#Ajustar el modelo 2 con XOM como variable dependiente
+
+
+modelo2 <- lm(
+  XOM ~ HAL + GOOGL + VLO + COP + CVX + TSLA + AGQ,
+  data = modelo2_data
+)
+
+summary(modelo2)
+
+
+#Ajustar el modelo 3 con GOOGL como variable dependiente
+
+
+modelo3 <- lm(
+  GOOGLT ~ MSFTT + AAPLT + NVDAT + METAT + AMZNT ,
+  data = modelo3_data
+)
+
+summary(modelo3)
+
+
+```
+
+```{r}
+#Pruebas de diagnóstico
+#MODELO 1
+vif(modelo1)  #Detecta multicolinealidad entre las variables independientes.
+bptest(modelo1) #Evalúa si hay heterocedasticidad, es decir, si la varianza de los errores no es constante.
+bgtest(modelo1, order = 1 ) #Este test evalúa autocorrelación en los residuos, es decir, si el error de hoy está relacionado con el de ayer.
+
+#Pruebas de diagnóstico
+#MODELO 2
+vif(modelo2)  #Detecta multicolinealidad entre las variables independientes.
+bptest(modelo2) #Evalúa si hay heterocedasticidad, es decir, si la varianza de los errores no es constante.
+bgtest(modelo2, order = 1 ) #Este test evalúa autocorrelación en los residuos, es decir, si el error de hoy está relacionado con el de ayer.
+
+
+
+#Pruebas de diagnóstico
+#MODELO 3
+vif(modelo3)
+bptest(modelo3)
+bgtest(modelo3, order = 1)
+
+```
+
+<h3>Interpretación del Modelo 1</h3>
+
+<h4>Matriz de correlación</h4>
+
+<p>
+El análisis de correlación muestra que <strong>HAL</strong> presenta una correlación moderada con
+<strong>COP (0.53)</strong>, <strong>VLO (0.50)</strong> y <strong>CVX (0.48)</strong>.
+Estas relaciones son positivas, sectoriales y de magnitud intermedia.
+</p>
+
+<p>
+Esto implica que los regresores contienen información relevante para explicar los rendimientos de HAL,
+aunque no capturan completamente toda su dinámica intradía.
+</p>
+
+<h4>Diagnósticos econométricos</h4>
+
+<ul>
+  <li><strong>Multicolinealidad:</strong> VIF entre 1.17 y 2.29 → <strong>No se detecta multicolinealidad</strong>.</li>
+  <li><strong>Heterocedasticidad:</strong> Prueba de Breusch‑Pagan (p = 2.94e‑05) → <strong>Existe heterocedasticidad</strong>.</li>
+  <li><strong>Autocorrelación:</strong> Prueba de Breusch‑Godfrey (p = 0.188) → <strong>No hay autocorrelación</strong>.</li>
+</ul>
+
+<h4>Explicación de la heterocedasticidad en HAL</h4>
+
+<p>
+HAL es una empresa de <strong>servicios petroleros</strong>, por lo que no es ni productora directa
+ni refinadora de crudo. En este modelo, los rendimientos logarítmicos de HAL se explican en función de
+siete activos: XOM, GOOGL, VLO, COP, CVX, TSLA y AGQ.
+</p>
+
+<p>
+Debido a su modelo de negocio, <strong>HAL es especialmente sensible a shocks sectoriales</strong> como:
+</p>
+
+<ul>
+  <li>Anuncios de inversión y gasto de capital (CAPEX)</li>
+  <li>Cambios en las expectativas futuras del precio del petróleo</li>
+  <li>Noticias macroeconómicas</li>
+  <li>Incrementos en la volatilidad del mercado energético</li>
+</ul>
+
+<p>
+En contraste, empresas como <strong>COP, CVX, VLO y XOM</strong> tienden a moverse de forma más directa
+con el precio spot del petróleo y presentan flujos intradía relativamente más estables.
+</p>
+
+<p>
+Como resultado, en periodos de baja volatilidad la correlación sectorial explica adecuadamente los
+movimientos de HAL. Sin embargo, en episodios de alta volatilidad, HAL exhibe movimientos más amplificados
+que los previstos por los regresores, generando errores de distinta magnitud.
+</p>
+
+<p>
+<strong>Este patrón da lugar a la presencia de heterocedasticidad en el modelo.</strong>
+</p>
+
+<h4>Bondad de ajuste</h4>
+
+<ul>
+  <li><strong>R²:</strong> 0.4679</li>
+  <li><strong>R² ajustado:</strong> 0.4449</li>
+</ul>
+
+<p>
+El modelo explica aproximadamente <strong>44%</strong> de la variación de los rendimientos intradía de HAL,
+lo cual es razonable para datos de alta frecuencia (30 minutos).
+</p>
+
+<p>
+El estadístico F (20.35) con p‑valor menor a 2.2e‑16 indica que el modelo es
+<strong>globalmente significativo</strong>.
+</p>
+
+<p>
+En conjunto, los resultados confirman que HAL presenta una fuerte dependencia del sector energético,
+especialmente de COP, CVX y VLO. El modelo captura adecuadamente esta relación en el corto plazo,
+aunque la presencia de heterocedasticidad refleja la naturaleza volátil y amplificada de los rendimientos
+de HAL.
+</p>
+
+<h3>Interpretación del Modelo 2</h3>
+
+<h4>Matriz de correlación</h4>
+
+<p>
+La matriz de correlación muestra que <strong>XOM</strong> presenta relaciones positivas y económicamente
+relevantes con otras empresas del sector energético, en particular con
+<strong>CVX (0.69)</strong> y <strong>COP (0.55)</strong>. Estas correlaciones reflejan una alta
+exposición común al mercado petrolero y a factores macroeconómicos compartidos.
+</p>
+
+<p>
+En contraste, XOM presenta correlaciones bajas o negativas con activos tecnológicos como
+<strong>GOOGL (-0.29)</strong> y <strong>TSLA (-0.08)</strong>, lo que evidencia diferencias estructurales
+entre sectores.
+</p>
+
+<h4>Diagnósticos econométricos</h4>
+
+<ul>
+  <li><strong>Multicolinealidad:</strong> VIF entre 1.20 y 1.93 → <strong>No se detecta multicolinealidad</strong>.</li>
+  <li><strong>Heterocedasticidad:</strong> Prueba de Breusch‑Pagan (p = 0.4753) → <strong>No hay heterocedasticidad</strong>.</li>
+  <li><strong>Autocorrelación:</strong> Prueba de Breusch‑Godfrey (p = 0.169) → <strong>No hay autocorrelación</strong>.</li>
+</ul>
+
+<h4>Explicación de la estabilidad del modelo</h4>
+
+<p>
+En este modelo, los rendimientos logarítmicos de <strong>XOM</strong> se explican a partir de siete activos:
+HAL, GOOGL, VLO, COP, CVX, TSLA y AGQ. A diferencia de HAL, XOM es una empresa
+<strong>petrolera integrada</strong>, con actividades diversificadas que abarcan exploración, producción,
+refinación y comercialización.
+</p>
+
+<p>
+Esta estructura integrada permite que los movimientos de XOM sean más proporcionales y homogéneos
+ante cambios en el entorno económico y energético. Como resultado, las relaciones sectoriales
+capturadas por la matriz de correlación explican de forma consistente su dinámica intradía.
+</p>
+
+<p>
+En consecuencia, la varianza de los errores del modelo se mantiene relativamente constante a lo largo
+del tiempo, lo que explica la ausencia de heterocedasticidad detectada en las pruebas de diagnóstico.
+</p>
+
+<h4>Bondad de ajuste</h4>
+
+<ul>
+  <li><strong>R²:</strong> 0.4679</li>
+  <li><strong>R² ajustado:</strong> 0.4449</li>
+</ul>
+
+<p>
+El modelo explica aproximadamente <strong>44%</strong> de la variación de los rendimientos intradía de XOM,
+lo cual es adecuado para datos de alta frecuencia (30 minutos).
+</p>
+
+<p>
+El estadístico F (20.35) con un p‑valor menor a 2.2e‑16 indica que el modelo es
+<strong>globalmente significativo</strong>.
+</p>
+
+<p>
+En conjunto, el Modelo 2 presenta un comportamiento estadístico más estable que el Modelo 1,
+ya que cumple con los supuestos clásicos del método de Mínimos Cuadrados Ordinarios. Los resultados
+confirman que XOM se mueve principalmente en función de otras empresas del sector energético,
+especialmente CVX y COP, lo que es consistente con su carácter de empresa petrolera integrada.
+</p>
+
+
+<h3>Interpretación del Modelo 3</h3>
+
+<h4>Matriz de correlación</h4>
+
+<p>
+La matriz de correlación de los rendimientos intradía muestra que <strong>GOOGL</strong> presenta
+relaciones positivas y económicamente relevantes con otras empresas del sector tecnológico,
+en particular con <strong>META (0.48)</strong>, <strong>AMZN (0.40)</strong> y <strong>NVDA (0.32)</strong>.
+Estas correlaciones reflejan una exposición común a factores tecnológicos como publicidad digital,
+computación en la nube y desarrollo de inteligencia artificial.
+</p>
+
+<p>
+En contraste, la correlación con <strong>MSFT (0.20)</strong> y <strong>AAPL (0.07)</strong> es menor,
+lo que evidencia diferencias en los modelos de negocio y en la dinámica intradía de estas empresas.
+</p>
+
+<h4>Diagnósticos econométricos</h4>
+
+<ul>
+  <li>
+    <strong>Multicolinealidad:</strong> Los factores de inflación de la varianza (VIF) se mantienen
+    cercanos a 1, lo que indica <strong>ausencia de multicolinealidad</strong> entre las variables explicativas.
+  </li>
+
+  <li>
+    <strong>Heterocedasticidad:</strong> La prueba de Breusch‑Pagan no rechaza la hipótesis nula de
+    homocedasticidad al 5% (p = 0.09), aunque se observa evidencia marginal al 10%, lo que sugiere
+    una varianza de errores relativamente estable.
+  </li>
+
+  <li>
+    <strong>Autocorrelación:</strong> La prueba de Breusch‑Godfrey detecta autocorrelación de primer
+    orden en los residuos, lo cual es consistente con la presencia de dinámica intradía y efectos
+    de persistencia de corto plazo en los rendimientos del sector tecnológico.
+  </li>
+</ul>
+
+<h4>Explicación económica del modelo</h4>
+
+<p>
+En este modelo, los rendimientos logarítmicos de <strong>GOOGL</strong> se explican en función de cinco
+empresas tecnológicas líderes: MSFT, AAPL, NVDA, META y AMZN, las cuales representan distintos
+subsectores dentro del ecosistema tecnológico.
+</p>
+
+<p>
+Los resultados muestran que <strong>META</strong> y <strong>AMZN</strong> son los principales determinantes
+del comportamiento intradía de GOOGL, lo cual es consistente con su exposición común a la
+publicidad digital, plataformas tecnológicas y servicios en la nube. Asimismo, <strong>NVDA</strong>
+presenta un efecto positivo y significativo, reflejando el impacto de la infraestructura de
+inteligencia artificial sobre el sector.
+</p>
+
+<p>
+Por el contrario, <strong>AAPL</strong> no resulta estadísticamente significativa, lo que sugiere que
+su dinámica intradía responde a factores propios del hardware y del consumo, distintos a los 
+principales motores que explican los movimientos de GOOGL.
+</p>
+
+<h4>Bondad de ajuste</h4>
+
+<ul>
+  <li><strong>R²:</strong> 0.3027</li>
+  <li><strong>R² ajustado:</strong> 0.297</li>
+</ul>
+
+<p>
+El modelo explica aproximadamente <strong>30%</strong> de la variación de los rendimientos intradía
+de GOOGL, lo cual es adecuado considerando la alta frecuencia de los datos (30 minutos) y la
+heterogeneidad del sector tecnológico.
+</p>
+
+<p>
+El estadístico F (53.3) con un p‑valor menor a 2.2e‑16 indica que el modelo es
+<strong>globalmente significativo</strong>.
+</p>
+
+<p>
+En conjunto, el Modelo 3 presenta una buena capacidad explicativa y una estructura estadística
+coherente con la naturaleza del sector tecnológico. A diferencia del sector energético, donde
+existe un factor dominante común, la dinámica tecnológica es más heterogénea y presenta
+persistencia temporal, lo que explica la presencia de autocorrelación sin comprometer la validez
+del modelo.
+</p>
+
+<p>
+Con base en los diagnósticos obtenidos, se sugieren algunos ajustes sencillos para mejorar la
+interpretación de los modelos. En el <strong>Modelo 1</strong>, donde se detecta heterocedasticidad,
+una opción práctica es utilizar <strong>errores estándar robustos</strong>, los cuales permiten mantener
+los mismos coeficientes estimados pero corrigen la inferencia estadística ante cambios en la
+varianza de los errores. Esto es especialmente útil en datos intradía, donde la volatilidad no
+suele ser constante. En el caso del <strong>Modelo 3</strong>, la presencia de autocorrelación indica que
+los rendimientos de GOOGL muestran cierta persistencia en el corto plazo. Para atender este
+comportamiento, se podría incorporar información del periodo anterior o emplear errores estándar
+ajustados a autocorrelación, lo que permitiría capturar mejor la dinámica temporal sin modificar
+la interpretación económica del modelo.
+</p>
